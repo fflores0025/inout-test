@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+  <title>InOut · Test & Diagnóstico</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{--bg:#07070f;--card:#111120;--border:#1c1c2e;--a1:#c8ff00;--a2:#ff3cac;--a3:#00d4ff;--txt:#e6e6f0;--muted:#60607a;--success:#00e676;--danger:#ff1744;--warn:#ffab00;}
+    html,body{min-height:100%;font-family:'DM Sans',sans-serif;font-size:15px;color:var(--txt);background:var(--bg);-webkit-font-smoothing:antialiased;}
+    .wrap{max-width:640px;margin:0 auto;padding:24px 20px 60px;}
+
+    /* Header */
+    .hdr{display:flex;align-items:center;gap:14px;margin-bottom:28px;padding-bottom:18px;border-bottom:1px solid var(--border);}
+    .hdr-logo{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;}
+    .hdr-logo span{color:var(--a1);}
+    .hdr-sub{font-size:11px;color:var(--a3);letter-spacing:2px;text-transform:uppercase;margin-top:2px;}
+    .badge{padding:4px 10px;border-radius:100px;font-size:11px;font-weight:600;letter-spacing:.5px;}
+    .badge.online{background:rgba(0,230,118,.12);color:var(--success);border:1px solid rgba(0,230,118,.3);}
+    .badge.offline{background:rgba(255,23,68,.12);color:var(--danger);border:1px solid rgba(255,23,68,.3);}
+
+    /* Sections */
+    .section{margin-bottom:20px;}
+    .section-title{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:10px;}
+
+    /* Test cards */
+    .test-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:10px;}
+    .test-header{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+    .test-icon{font-size:22px;flex-shrink:0;}
+    .test-name{font-weight:600;font-size:15px;}
+    .test-desc{font-size:12px;color:var(--muted);margin-top:1px;}
+    .test-status{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;}
+    .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+    .dot.ok{background:var(--success);}
+    .dot.err{background:var(--danger);}
+    .dot.warn{background:var(--warn);}
+    .dot.idle{background:var(--muted);}
+    .dot.running{background:var(--a3);animation:blink .8s ease-in-out infinite;}
+    @keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+
+    /* Log output */
+    .log-box{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:12px 14px;font-family:'DM Mono',monospace;font-size:12px;line-height:1.6;max-height:160px;overflow-y:auto;margin-top:8px;white-space:pre-wrap;word-break:break-all;}
+    .log-box:empty::before{content:'— Sin resultado aún —';color:var(--muted);}
+    .log-ok{color:var(--success);}
+    .log-err{color:var(--danger);}
+    .log-warn{color:var(--warn);}
+    .log-info{color:var(--a3);}
+
+    /* Buttons */
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:9px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;transition:opacity .12s,transform .1s;}
+    .btn:active{transform:scale(.96);opacity:.8;}
+    .btn:disabled{opacity:.4;pointer-events:none;}
+    .btn-p{background:var(--a1);color:#000;}
+    .btn-g{background:transparent;color:var(--muted);border:1px solid var(--border);}
+    .btn-sm{padding:7px 13px;font-size:12px;}
+
+    /* NFC scan area */
+    .nfc-area{border:2px dashed var(--border);border-radius:14px;padding:28px;text-align:center;transition:border-color .2s,background .2s;}
+    .nfc-area.active{border-color:var(--a3);background:rgba(0,212,255,.04);}
+    .nfc-area.found{border-color:var(--a1);background:rgba(200,255,0,.04);}
+    .nfc-area.err{border-color:var(--danger);background:rgba(255,23,68,.04);}
+
+    /* UID lookup */
+    .uid-input{width:100%;padding:11px 14px;border-radius:9px;background:var(--bg);border:1px solid var(--border);color:var(--txt);font-family:'DM Mono',monospace;font-size:16px;outline:none;letter-spacing:2px;-webkit-text-fill-color:var(--txt);}
+    .uid-input:focus{border-color:var(--a3);}
+
+    /* System info grid */
+    .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+    .info-item{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:10px 12px;}
+    .info-key{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;}
+    .info-val{font-family:'DM Mono',monospace;font-size:13px;color:var(--txt);}
+
+    /* Footer */
+    .page-footer{text-align:center;margin-top:32px;font-size:11px;color:var(--muted);}
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="hdr">
+    <div>
+      <div class="hdr-logo">in<span>out</span></div>
+      <div class="hdr-sub">Test & Diagnóstico</div>
+    </div>
+    <div style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+      <span class="badge" id="net-badge">—</span>
+      <span style="font-size:10px;color:var(--muted)" id="page-time">—</span>
+    </div>
+  </div>
+
+  <!-- ── SYSTEM INFO ── -->
+  <div class="section">
+    <div class="section-title">Sistema</div>
+    <div class="info-grid" id="sys-info">
+      <div class="info-item"><div class="info-key">Dispositivo</div><div class="info-val" id="si-ua">—</div></div>
+      <div class="info-item"><div class="info-key">NFC</div><div class="info-val" id="si-nfc">—</div></div>
+      <div class="info-item"><div class="info-key">Vibración</div><div class="info-val" id="si-vib">—</div></div>
+      <div class="info-item"><div class="info-key">Pantalla</div><div class="info-val" id="si-screen">—</div></div>
+      <div class="info-item"><div class="info-key">User Agent</div><div class="info-val" id="si-full" style="font-size:10px;word-break:break-all">—</div></div>
+      <div class="info-item"><div class="info-key">Protocolo</div><div class="info-val" id="si-proto">—</div></div>
+    </div>
+  </div>
+
+  <!-- ── NFC TEST ── -->
+  <div class="section">
+    <div class="section-title">NFC</div>
+    <div class="test-card">
+      <div class="test-header">
+        <span class="test-icon">📡</span>
+        <div><div class="test-name">Lectura NFC</div><div class="test-desc">Escaneo de pulsera RFID/NFC</div></div>
+        <div class="test-status" id="nfc-status"><span class="dot idle"></span><span>Listo</span></div>
+      </div>
+      <div class="nfc-area" id="nfc-area">
+        <div style="font-size:36px;margin-bottom:8px">👋</div>
+        <div style="font-size:14px;color:var(--muted)" id="nfc-area-txt">Pulsa "Iniciar scan" y acerca una pulsera NFC</div>
+      </div>
+      <div class="log-box" id="nfc-log"></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn btn-p btn-sm" onclick="startNFCTest()" id="btn-nfc-start">▶ Iniciar scan</button>
+        <button class="btn btn-g btn-sm" onclick="stopNFCTest()" id="btn-nfc-stop" disabled>⏹ Detener</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── UID LOOKUP ── -->
+  <div class="section">
+    <div class="section-title">Consulta UID en Supabase</div>
+    <div class="test-card">
+      <div class="test-header">
+        <span class="test-icon">🔍</span>
+        <div><div class="test-name">Verificar pulsera</div><div class="test-desc">Consulta rfid_wristbands por UID</div></div>
+        <div class="test-status" id="uid-status"><span class="dot idle"></span><span>Listo</span></div>
+      </div>
+      <input class="uid-input" id="uid-lookup-in" placeholder="A3B21F8C" maxlength="20"
+        oninput="this.value=this.value.replace(/[^a-fA-F0-9 :]/g,'').toUpperCase()"
+        onkeydown="if(event.key==='Enter')lookupUID()"/>
+      <div class="log-box" id="uid-log"></div>
+      <div style="margin-top:10px">
+        <button class="btn btn-p btn-sm" onclick="lookupUID()">🔍 Consultar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── API TEST ── -->
+  <div class="section">
+    <div class="section-title">Backend API (inout-api.vercel.app)</div>
+
+    <div class="test-card">
+      <div class="test-header">
+        <span class="test-icon">🏓</span>
+        <div><div class="test-name">Health check</div><div class="test-desc">GET /api/health</div></div>
+        <div class="test-status" id="api-health-status"><span class="dot idle"></span><span>—</span></div>
+      </div>
+      <div class="log-box" id="api-health-log"></div>
+      <button class="btn btn-p btn-sm" style="margin-top:10px" onclick="testAPIHealth()">▶ Test</button>
+    </div>
+
+    <div class="test-card">
+      <div class="test-header">
+        <span class="test-icon">💳</span>
+        <div><div class="test-name">SumUp checkout (dry-run)</div><div class="test-desc">POST /api/rfid/topup con amount=0.01 (no cobra)</div></div>
+        <div class="test-status" id="api-sumup-status"><span class="dot idle"></span><span>—</span></div>
+      </div>
+      <div class="log-box" id="api-sumup-log"></div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+        <input class="uid-input" id="sumup-uid-in" placeholder="UID pulsera para test" style="max-width:200px;font-size:13px"/>
+        <button class="btn btn-p btn-sm" onclick="testSumUpCheckout()">▶ Test checkout</button>
+      </div>
+    </div>
+
+    <div class="test-card">
+      <div class="test-header">
+        <span class="test-icon">📬</span>
+        <div><div class="test-name">CORS headers</div><div class="test-desc">Verifica cabeceras CORS del API</div></div>
+        <div class="test-status" id="api-cors-status"><span class="dot idle"></span><span>—</span></div>
+      </div>
+      <div class="log-box" id="api-cors-log"></div>
+      <button class="btn btn-p btn-sm" style="margin-top:10px" onclick="testCORS()">▶ Test CORS</button>
+    </div>
+  </div>
+
+  <!-- ── SUPABASE TEST ── -->
+  <div class="section">
+    <div class="section-title">Supabase</div>
+    <div class="test-card">
+      <div class="test-header">
+        <span class="test-icon">🗄️</span>
+        <div><div class="test-name">Conexión Supabase</div><div class="test-desc">SELECT count(*) FROM rfid_wristbands</div></div>
+        <div class="test-status" id="sb-status"><span class="dot idle"></span><span>—</span></div>
+      </div>
+      <div class="log-box" id="sb-log"></div>
+      <button class="btn btn-p btn-sm" style="margin-top:10px" onclick="testSupabase()">▶ Test conexión</button>
+    </div>
+  </div>
+
+  <!-- ── RUN ALL ── -->
+  <div style="margin-top:4px">
+    <button class="btn btn-p" onclick="runAll()" style="width:100%">
+      🚀 Ejecutar todos los tests
+    </button>
+  </div>
+
+  <div class="page-footer">InOut Test Tool · v1.0 · inout-test.vercel.app</div>
+</div>
+
+<script>
+const SB_URL = 'https://raoxkjnwrccoxjcipfpv.supabase.co';
+const SB_KEY = 'sb_publishable__-K1pC4bOJHRf8JQ__OOzg_jqLxlGla';
+const API    = 'https://inout-api.vercel.app';
+const _sb    = supabase.createClient(SB_URL, SB_KEY);
+
+let nfcAbort = null;
+
+// ── INIT ──
+window.addEventListener('DOMContentLoaded', ()=>{
+  fillSystemInfo();
+  updateNetBadge();
+  setInterval(()=>{ document.getElementById('page-time').textContent=new Date().toLocaleTimeString('es-ES'); },1000);
+  window.addEventListener('online',  updateNetBadge);
+  window.addEventListener('offline', updateNetBadge);
+});
+
+function updateNetBadge(){
+  const b=document.getElementById('net-badge');
+  if(navigator.onLine){ b.className='badge online'; b.textContent='🟢 Online'; }
+  else{ b.className='badge offline'; b.textContent='🔴 Offline'; }
+}
+
+function fillSystemInfo(){
+  const ua=navigator.userAgent;
+  const isAndroid=/Android/i.test(ua);
+  const isIOS=/iPhone|iPad/i.test(ua);
+  document.getElementById('si-ua').textContent    = isAndroid?'Android':isIOS?'iOS':'Desktop';
+  document.getElementById('si-nfc').textContent   = 'NDEFReader' in window?'✅ Soportado':'❌ No soportado';
+  document.getElementById('si-vib').textContent   = 'vibrate' in navigator?'✅ Sí':'❌ No';
+  document.getElementById('si-screen').textContent= window.screen.width+'×'+window.screen.height;
+  document.getElementById('si-full').textContent  = ua.substring(0,80)+(ua.length>80?'…':'');
+  document.getElementById('si-proto').textContent = location.protocol;
+}
+
+// ── STATUS HELPERS ──
+function setStatus(id, state, label){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.innerHTML=`<span class="dot ${state}"></span><span>${label}</span>`;
+}
+
+function log(id, msg, cls=''){
+  const el=document.getElementById(id);
+  if(!el) return;
+  const line=document.createElement('div');
+  line.className=cls;
+  line.textContent=msg;
+  el.appendChild(line);
+  el.scrollTop=el.scrollHeight;
+}
+
+function clearLog(id){ const el=document.getElementById(id); if(el) el.innerHTML=''; }
+
+// ── NFC TEST ──
+async function startNFCTest(){
+  clearLog('nfc-log');
+  const area=document.getElementById('nfc-area');
+  if(!('NDEFReader' in window)){
+    setStatus('nfc-status','err','No soportado');
+    log('nfc-log','❌ NDEFReader no disponible en este dispositivo/navegador.','log-err');
+    log('nfc-log','ℹ️  Requiere Chrome en Android con HTTPS.','log-warn');
+    area.className='nfc-area err'; return;
+  }
+  if(location.protocol!=='https:'){
+    setStatus('nfc-status','warn','Sin HTTPS');
+    log('nfc-log','⚠️  NFC requiere HTTPS. Actualmente: '+location.protocol,'log-warn');
+    area.className='nfc-area err'; return;
+  }
+  try{
+    setStatus('nfc-status','running','Escaneando…');
+    area.className='nfc-area active';
+    document.getElementById('nfc-area-txt').textContent='Acerca una pulsera NFC al lector…';
+    document.getElementById('btn-nfc-start').disabled=true;
+    document.getElementById('btn-nfc-stop').disabled=false;
+
+    const ndef=new NDEFReader();
+    nfcAbort=new AbortController();
+    await ndef.scan({signal:nfcAbort.signal});
+    log('nfc-log','✅ NFC scan iniciado correctamente.','log-ok');
+
+    ndef.onreadingerror=()=>{
+      log('nfc-log','⚠️  Error al leer la pulsera.','log-warn');
+    };
+
+    ndef.onreading=(ev)=>{
+      const uid=ev.serialNumber.replace(/:/g,'').toUpperCase();
+      const records=ev.message.records;
+      area.className='nfc-area found';
+      document.getElementById('nfc-area-txt').textContent='✅ Pulsera detectada';
+      log('nfc-log','─────────────────────','log-info');
+      log('nfc-log','📡 UID detectado: '+uid,'log-ok');
+      log('nfc-log','   Serial raw:    '+ev.serialNumber,'log-info');
+      log('nfc-log','   Registros NFC: '+records.length,'log-info');
+      records.forEach((r,i)=>{
+        log('nfc-log','   ['+i+'] type='+r.recordType+' mediaType='+(r.mediaType||'—'),'log-info');
+      });
+      setStatus('nfc-status','ok','UID: '+uid);
+      if(navigator.vibrate) navigator.vibrate(100);
+    };
+
+  }catch(e){
+    setStatus('nfc-status','err','Error');
+    log('nfc-log','❌ Error: '+e.message,'log-err');
+    area.className='nfc-area err';
+    document.getElementById('btn-nfc-start').disabled=false;
+    document.getElementById('btn-nfc-stop').disabled=true;
+  }
+}
+
+function stopNFCTest(){
+  if(nfcAbort){ nfcAbort.abort(); nfcAbort=null; }
+  setStatus('nfc-status','idle','Detenido');
+  document.getElementById('nfc-area').className='nfc-area';
+  document.getElementById('nfc-area-txt').textContent='Pulsa "Iniciar scan" y acerca una pulsera NFC';
+  document.getElementById('btn-nfc-start').disabled=false;
+  document.getElementById('btn-nfc-stop').disabled=true;
+  log('nfc-log','⏹ Scan detenido.','log-warn');
+}
+
+// ── UID LOOKUP ──
+async function lookupUID(){
+  clearLog('uid-log');
+  const raw=(document.getElementById('uid-lookup-in')?.value||'').trim();
+  const uid=raw.replace(/[^a-fA-F0-9]/g,'').toUpperCase();
+  if(uid.length<4){ log('uid-log','⚠️  Introduce al menos 4 caracteres hex.','log-warn'); return; }
+  setStatus('uid-status','running','Consultando…');
+  log('uid-log','🔍 Buscando UID: '+uid+'…','log-info');
+  try{
+    const t0=Date.now();
+    const {data,error}=await _sb.from('rfid_wristbands').select('*').eq('uid',uid).single();
+    const ms=Date.now()-t0;
+    if(error||!data){
+      setStatus('uid-status','err','No encontrada');
+      log('uid-log','❌ Pulsera no encontrada ('+ms+'ms)','log-err');
+      log('uid-log','   Error: '+(error?.message||'Sin resultados'),'log-err');
+      return;
+    }
+    setStatus('uid-status','ok','Encontrada ✅');
+    log('uid-log','✅ Pulsera encontrada ('+ms+'ms)','log-ok');
+    log('uid-log','─────────────────────','log-info');
+    log('uid-log','   ID:      '+data.id,'log-info');
+    log('uid-log','   UID:     '+data.uid,'log-info');
+    log('uid-log','   Nombre:  '+(data.holder_name||'—'),'log-info');
+    log('uid-log','   Email:   '+(data.email||'—'),'log-info');
+    log('uid-log','   Saldo:   '+Number(data.balance).toFixed(2)+' €','log-info');
+    log('uid-log','   Estado:  '+data.status,'log-info'+(data.status==='active'?'':' log-warn'));
+    log('uid-log','   Evento:  '+(data.event_id||'—'),'log-info');
+  }catch(e){
+    setStatus('uid-status','err','Error');
+    log('uid-log','❌ Error de conexión: '+e.message,'log-err');
+  }
+}
+
+// ── API HEALTH ──
+async function testAPIHealth(){
+  clearLog('api-health-log');
+  setStatus('api-health-status','running','Consultando…');
+  log('api-health-log','→ GET '+API+'/api/health','log-info');
+  try{
+    const t0=Date.now();
+    const res=await fetch(API+'/api/health');
+    const ms=Date.now()-t0;
+    if(res.ok){
+      const data=await res.json().catch(()=>({}));
+      setStatus('api-health-status','ok','OK ('+ms+'ms)');
+      log('api-health-log','✅ HTTP '+res.status+' en '+ms+'ms','log-ok');
+      log('api-health-log','   '+JSON.stringify(data),'log-info');
+    } else {
+      setStatus('api-health-status','warn','HTTP '+res.status);
+      log('api-health-log','⚠️  HTTP '+res.status+' en '+ms+'ms','log-warn');
+    }
+  }catch(e){
+    setStatus('api-health-status','err','Sin respuesta');
+    log('api-health-log','❌ Error: '+e.message,'log-err');
+    log('api-health-log','   Verifica que inout-api.vercel.app esté desplegado.','log-warn');
+  }
+}
+
+// ── CORS TEST ──
+async function testCORS(){
+  clearLog('api-cors-log');
+  setStatus('api-cors-status','running','Verificando…');
+  log('api-cors-log','→ OPTIONS '+API+'/api/rfid/topup','log-info');
+  try{
+    const res=await fetch(API+'/api/rfid/topup',{method:'OPTIONS'});
+    const ao=res.headers.get('access-control-allow-origin');
+    const am=res.headers.get('access-control-allow-methods');
+    const ah=res.headers.get('access-control-allow-headers');
+    if(ao){
+      setStatus('api-cors-status','ok','CORS OK');
+      log('api-cors-log','✅ CORS habilitado','log-ok');
+      log('api-cors-log','   Allow-Origin:  '+ao,'log-info');
+      log('api-cors-log','   Allow-Methods: '+(am||'—'),'log-info');
+      log('api-cors-log','   Allow-Headers: '+(ah||'—'),'log-info');
+    } else {
+      setStatus('api-cors-status','warn','Sin cabeceras');
+      log('api-cors-log','⚠️  No se encontraron cabeceras CORS.','log-warn');
+    }
+  }catch(e){
+    setStatus('api-cors-status','err','Error');
+    log('api-cors-log','❌ '+e.message,'log-err');
+  }
+}
+
+// ── SUMUP DRY-RUN ──
+async function testSumUpCheckout(){
+  clearLog('api-sumup-log');
+  const raw=(document.getElementById('sumup-uid-in')?.value||'').trim();
+  const uid=raw.replace(/[^a-fA-F0-9]/g,'').toUpperCase();
+  if(uid.length<4){ log('api-sumup-log','⚠️  Introduce un UID válido primero.','log-warn'); return; }
+
+  // Buscar wristband
+  setStatus('api-sumup-status','running','Buscando pulsera…');
+  log('api-sumup-log','🔍 Buscando UID: '+uid,'log-info');
+  const {data:wb}=await _sb.from('rfid_wristbands').select('id,uid,holder_name,event_id').eq('uid',uid).single();
+  if(!wb){ setStatus('api-sumup-status','err','Pulsera no encontrada'); log('api-sumup-log','❌ Pulsera no encontrada.','log-err'); return; }
+  log('api-sumup-log','✅ Pulsera: '+(wb.holder_name||wb.uid),'log-ok');
+
+  log('api-sumup-log','→ POST '+API+'/api/rfid/topup (amount=0.01 — DRY RUN)','log-info');
+  setStatus('api-sumup-status','running','Creando checkout…');
+  try{
+    const t0=Date.now();
+    const res=await fetch(API+'/api/rfid/topup',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        wristband_id:wb.id, uid:wb.uid, amount:0.01,
+        event_id:wb.event_id, operator:'test-tool',
+        return_origin:'https://inout-test.vercel.app', dry_run:true
+      })
+    });
+    const ms=Date.now()-t0;
+    const data=await res.json();
+    if(data.error){
+      setStatus('api-sumup-status','warn','Error API');
+      log('api-sumup-log','⚠️  Error del API ('+ms+'ms): '+data.error,'log-warn');
+    } else {
+      setStatus('api-sumup-status','ok','OK ('+ms+'ms)');
+      log('api-sumup-log','✅ Checkout creado en '+ms+'ms','log-ok');
+      log('api-sumup-log','   sumup_checkout_id: '+(data.sumup_checkout_id||'—'),'log-info');
+      log('api-sumup-log','   reference:         '+(data.reference||'—'),'log-info');
+      log('api-sumup-log','   checkout_url:      '+(data.checkout_url||'—'),'log-info');
+    }
+  }catch(e){
+    setStatus('api-sumup-status','err','Error de red');
+    log('api-sumup-log','❌ '+e.message,'log-err');
+  }
+}
+
+// ── SUPABASE ──
+async function testSupabase(){
+  clearLog('sb-log');
+  setStatus('sb-status','running','Conectando…');
+  log('sb-log','→ SELECT count(*) FROM rfid_wristbands','log-info');
+  try{
+    const t0=Date.now();
+    const {count,error}=await _sb.from('rfid_wristbands').select('*',{count:'exact',head:true});
+    const ms=Date.now()-t0;
+    if(error){
+      setStatus('sb-status','err','Error');
+      log('sb-log','❌ '+error.message,'log-err'); return;
+    }
+    setStatus('sb-status','ok','OK ('+ms+'ms)');
+    log('sb-log','✅ Conexión correcta en '+ms+'ms','log-ok');
+    log('sb-log','   Pulseras en DB: '+count,'log-info');
+
+    // Count transactions
+    const {count:tc}=await _sb.from('rfid_transactions').select('*',{count:'exact',head:true});
+    log('sb-log','   Transacciones:  '+tc,'log-info');
+
+    // Count products
+    const {count:pc}=await _sb.from('rfid_products').select('*',{count:'exact',head:true}).catch(()=>({count:'—'}));
+    log('sb-log','   Productos:      '+pc,'log-info');
+
+  }catch(e){
+    setStatus('sb-status','err','Error');
+    log('sb-log','❌ '+e.message,'log-err');
+  }
+}
+
+// ── RUN ALL ──
+async function runAll(){
+  await testAPIHealth();
+  await testCORS();
+  await testSupabase();
+}
+</script>
+</body>
+</html>
