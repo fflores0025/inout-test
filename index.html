@@ -476,9 +476,15 @@ async function testSupabase(){
     const {count:tc}=await _sb.from('rfid_transactions').select('*',{count:'exact',head:true});
     log('sb-log','   Transacciones:  '+tc,'log-info');
 
-    // Count products
-    const {count:pc}=await _sb.from('rfid_products').select('*',{count:'exact',head:true}).catch(()=>({count:'—'}));
+    // Count products — tabla puede no existir aún, no usar .catch() (Supabase v2)
+    let pc='—';
+    try{ const r=await _sb.from('rfid_products').select('*',{count:'exact',head:true}); pc=r.count??'—'; }catch(_){}
     log('sb-log','   Productos:      '+pc,'log-info');
+
+    // Count POS
+    let posc='—';
+    try{ const r=await _sb.from('rfid_points_of_sale').select('*',{count:'exact',head:true}); posc=r.count??'—'; }catch(_){}
+    log('sb-log','   Puntos de venta: '+posc,'log-info');
 
   }catch(e){
     setStatus('sb-status','err','Error');
